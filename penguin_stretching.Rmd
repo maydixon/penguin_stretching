@@ -1,0 +1,80 @@
+---
+title: "Penguin Project"
+author: "may"
+date: "4/20/2020"
+output: html_document
+---
+```{r}
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(ggplot2)
+library(truncnorm) # just generates a truncated normal distribution
+
+```
+
+import dataset
+```{r}
+
+
+```
+
+
+```{r}
+#generate random dataset
+#make histogram
+#now add an excess of low and high numbers 
+#make histogram
+
+#normal histogram
+x <- seq(0, 300, by = 1)
+interstretch_interval <- rnorm(x, mean = 50.0, sd = 15.0)
+interstretch_interval<-data.frame(interstretch_interval)
+#plot
+normalplot <- ggplot(interstretch_interval, aes(x=interstretch_interval)) + geom_histogram(binwidth=10, color = "black", fill = "white") + xlab("Interstretch interval (s)")
+#ggsave("normaldistribution.jpg", height = 2, width = 3)
+
+histogram with excess of low and high numbers
+interstretch_interval
+#make some low and high numbers
+   p<-   c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,20,20,20,20,11,1,1,1,1,1,1,1,1,1,1,1,1,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5, 20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,100, 100, 110,115, 135,144, 122, 133 )
+p<- data.frame(interstretch_interval = c(1,1,1,1,1,11,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,11,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10, 20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 110,115, 123,123,123,123,123,123,123,123,123,123,123,123,123, 135,144, 122, 133 ))
+interstretch_interval_2<- data.frame(rbind(interstretch_interval, p))
+
+#plot
+non_normalplot <- ggplot(interstretch_interval_2, aes(x=interstretch_interval)) + geom_histogram(binwidth=10, color = "black", fill = "white") + xlab("Interstretch interval (s)")
+non_normalplot 
+ggsave("nonnormaldistribution.jpg", height = 2, width = 3)
+hist(interstretch_interval_2$interstretch_interval)
+```
+
+```{r}
+ n = 30 #occurances
+ r = 0.8 # correlation bt groups
+ 
+ x1 = rtruncnorm(n, a=0, b=20, mean=4, sd=4) # #penguins
+ x2 = rtruncnorm(n, a = 0, b=10)   # stretches
+ y1 = r*x2+sqrt(1-r*r)*x1 #correlated # stretches
+ group_stretch <- data.frame(x1,x2, y1) #make into data.frame
+
+#plot with correlation 
+group_stretch_plot <- ggplot(group_stretch, aes(x= x1, y= y1)) +geom_point() + ylab("# stretches / individual") + xlab("# penguins in group")
+ group_stretch_plot
+ ggsave("group_stretch_plot.jpg",height = 2, width = 3)
+ 
+ 
+ #plot without correlation
+group_stretch_plot_nocorrelation <- ggplot(group_stretch, aes(x= x1, y= x2)) +geom_point() + ylab("# stretches / individual") + xlab("# penguins in group")
+group_stretch_plot_nocorrelation
+ ggsave("group_stretch_plot_nocorrelation.jpg",height = 2, width = 3)
+ 
+```
+```{r}
+
+```
+
+
