@@ -1,30 +1,311 @@
 ---
 title: "Penguin Project"
-author: "may"
+author: "May and Caitlin"
 date: "4/20/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
-```{r}
-
-```
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
-```{r}
+
+```{r, include=FALSE}
 library(ggplot2)
 library(truncnorm) # just generates a truncated normal distribution
+library(readxl)
+library(wesanderson)
+library(tidyverse)
+library(dplyr)
+library("ggpubr")
+library(knitr)
+library(tinytex)
 
 ```
 
-import dataset
+import datasets
+```{r, include = FALSE,  message = FALSE, warning = FALSE}
+penguin_data <- read_excel("histogram_penguin_data.xlsx")
+
+penguin_group <- clean_penguin_data <- read_excel("clean_penguin_data.xlsx", 
+    col_types = c("numeric", "date", "text", 
+        "text", "text", "numeric", "numeric", 
+        "skip", "numeric"))
+
+
+# get data with no weird group sizes : removes 0 2.5, and also 13 and 14, which have very few observations
+penguin_group <- penguin_group %>% filter(n_penguins %in% c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+
+
+#View(clean_penguin_data)
+#View(penguin_data)
+#str(penguin_data)
+#colnames(penguin_data)
+```
+This document includes
+- summary stats: mean median interstretch interval
+
+- Summary stats for each penguin group size
+
+
+- Plot of the average interstretch interval per group-size 
+- Plot of the average interstretch interval per group-size per individual(*group size) 
+- regressions of slope and fit for these data
+
+- Full histogram of interstretch intervals for all data
+- Histogram of interstretch intervals seperated by group size
+- Shapiro- wilks and KS tests of normality 
+
+
+OTHER interesting data visualized:
+
+- When did people observe?
+- Did average stretch rate vary by time of day?
+- Did group size vary by time of day?
+--
+
+Summary stretching stats:
+
+Mean interstretch interval:
+```{r, echo = FALSE}
+mean_stretch<- mean(penguin_group$inter_stretch_intervals_s)
+median_stretch <- median(penguin_group$inter_stretch_intervals_s)
+
+mean_stretch 
+```
+
+median interstretch interval:
+```{r, echo = FALSE}
+median_stretch
+
+```
+Summary data by group size:
 ```{r}
+# observations per groups size
+#averages/ group size
+#remove rows with n_penguins 0, 2.5, NA
+
+#make dataframe, get rid of weird penguin results like "2.5 penguins"
+IS_avg<-penguin_group %>% filter(n_penguins %in% c(1,2,3,4,5,6,7,8,9,10,11,12,13,14)) %>% group_by(n_penguins) %>%
+      summarise(stretch_mean = mean(inter_stretch_intervals_s, na.rm=TRUE), stretch_sd = sd(inter_stretch_intervals_s, na.rm=TRUE), stretch_median = median(inter_stretch_intervals_s, na.rm=TRUE),  n_obs = n())
+
+
+
+IS_avg <- mutate(IS_avg, avg_interstretch_per_individual = stretch_mean*n_penguins, med_interstretch_per_individual = stretch_median*n_penguins)
+write.csv(IS_avg, "summary_groupsize.csv")
+#IS_avg
+IS_avg_table <- as.data.frame(IS_avg)
+```
+n_penguins = group size
+stretch_mean =  inerstretch interval mean
+stretch_sd = interstretch interval standard deviation 
+stretch_median = median interstretch interval
+n_obs = number of observations / group
+
+```{r echo = FALSE, results = 'asis'}
+kable(IS_avg_table, caption = 'Stretching by group size')
+#,stretch_per_penguin = stretch_median/n_penguins,
+```
+ ### Inter-stretch interval by group size
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+#mean response/ group size
+
+stretch_groupsize_plot <- ggplot(data = IS_avg, aes(x = n_penguins, y = stretch_median )) +
+  geom_point() +
+  geom_smooth(method='lm', formula= y~x) +
+  xlab("Group size") +
+  ylab("Median interstretch interval in group")
+stretch_groupsize_plot
+
+regression_groupsize<- summary(lm( penguin_group$inter_stretch_intervals_s ~  penguin_group$n_penguins))
+
+regression_groupsize
+
+
+```
+Basically, the inter-stretch interval decreases by about 12 seconds for every increase of 1 penguin in a group
+
+
+But of course, if you have more penguins around, the interstretch interval will go down even if each penguin is just stretching at the same rate. So we can also account for the # of individuals around by multiplying the interstretch interval by the # of penguins around
+
+ ###Interstretch interval per individual group size/ individual. 
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+
+# median trend
+med_stretch_groupsize_individual_plot <- ggplot(data = IS_avg, aes(x = n_penguins, y = med_interstretch_per_individual )) +
+  geom_point() +
+  geom_smooth(method='lm', formula= y~x) +
+  xlab("Group size") +
+  ylab("Median interstretch interval / individual") 
+med_stretch_groupsize_individual_plot
+
+
+
+#now perform a regression with all data
+#first, make a new column that has the interstretch interval* group size
+#is_p_group = the interstretch interval * # penguins in the group
+penguin_group <- mutate(penguin_group, is_p_group = inter_stretch_intervals_s*n_penguins)
+
+regression_groupsize<- summary(lm( penguin_group$is_p_group ~  penguin_group$n_penguins))
+
+regression_groupsize
+
+stretch_groupsize_individual_plot <- ggplot(data = penguin_group, aes(x = n_penguins, y = is_p_group )) +
+  geom_point() +
+  geom_smooth(method='lm', formula= y~x) +
+  xlab("Group size") +
+  ylab("Interstretch interval / individual") +
+geom_point(data =IS_avg, mapping=aes(x = n_penguins, y = stretch_median*n_penguins), color = "pink", shape=17, size = 4) #parameters for the averages
+     
+stretch_groupsize_individual_plot
+
+
+```
+```
+As group size gets bigger, the time between stretches (per individual) increases by 75s / group member
+number of observations of stretching at each group size. 
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+observations_groupsize_plot <- ggplot(data = IS_avg, aes(x = n_penguins, y = n_obs )) +
+  geom_point() +
+  xlab("Group size") +
+  ylab("Number of observations of stretching")
+observations_groupsize_plot
+ggsave("observations_stretching_groupsize.jpg")
+```
+
+
+Histograms 
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+#full histogram, within 1 hr
+pen_hist<- ggplot(penguin_data, aes(x= Interstretch_interval_s, fill = Interstretch_interval_s )) +
+      geom_histogram(binwidth = 10, color = wes_palette(n=1, name="Zissou1")) +
+      xlim(0, 3600)+
+      xlab("Interstretch interval (s)")  
+ 
+
+pen_hist
+
+#histogram within 5 minutes
+ggsave("penguin_histogram_full.jpg")
+
+pen_hist_zoom <- pen_hist +
+      xlim(0,300)
+pen_hist_zoom
+ggsave("penguin_histogram_5min.jpg")
+```
+
+Stats: is this distribution normal?
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+# make dataset small enough to use (5000 = maximum # of samples)
+penguin_subdata <- sample_n(penguin_data,  5000)
+shapiro_test_fulldata <- shapiro.test(penguin_subdata$Interstretch_interval_s) #shapiro test
+kstest_fulldata <- ks.test(penguin_subdata$Interstretch_interval_s, y = rpois(5000,10))  # ks test
+kstest_fulldata
+
+shapiro_test_fulldata
+#density plot if I want
+
+```
+No, this distribution is decidedly non- normal. 
+
+But is it not normal at each group size? It is possible that each group has it's own inter-stretch interval, and combining all the group sizes makes the distribution appear non-normal when it is. 
+histograms broken down by group size
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+
+
+pen_hist_groupsize <- ggplot(penguin_group, aes(x= inter_stretch_intervals_s )) +
+      geom_histogram(binwidth = 10, color = wes_palette(n=1, name="Zissou1")) +
+      xlim(0, 300) +
+      xlab("Interstretch interval (s)") +
+       facet_wrap(~ n_penguins) #this makes a nice facet
+
+pen_hist_groupsize
+#ggsave("histogram_by_groupsize.jpg")
+
+# distribution for just one pengiun
+penguin_one <-penguin_group %>% filter(n_penguins %in% c(1,2))
+pen_hist_group1and2 <- ggplot(penguin_one, aes(x= inter_stretch_intervals_s)) +
+      geom_histogram(binwidth = 10, color = wes_palette(n=1, name="Zissou1")) +
+      xlim(0, 300) +
+      xlab("Interstretch interval (s)") +
+       facet_wrap(~ n_penguins) #this makes a nice facet
+pen_hist_groupsize       
+pen_hist_group1and2 
+
+```
+
+
+KS test at each group size
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+#subgrouppenguin_subdata <- sample_n(penguin_data,  5000)
+penguin_subgroup <- sample_n(penguin_group, 5000)
+S_test_summary <- penguin_subgroup %>% filter(n_penguins %in% c(1,2,3,4,5,6,7,8,9,10,11,12,13,14)) %>%
+# sample_n(5000) %>%
+group_by(n_penguins) %>% 
+summarise(shapiro_statistic = shapiro.test(inter_stretch_intervals_s)$statistic,
+            shapiro_p.value = shapiro.test(inter_stretch_intervals_s)$p.value, 
+            KStest_statistic = ks.test(inter_stretch_intervals_s, y = rpois(5000,2))$statistic,
+            KStest_p.value = ks.test(inter_stretch_intervals_s, y = rpois(5000,2))$p.value )    
+```
+
+```{r echo = FALSE, results = 'asis'}
+
+kable(S_test_summary, caption = 'Summary of normality tests by group size')
+
+
+
+```
+This shows that all the group sizes were non-normal, including the observations with only 1 penguin in a group. Suggests that differences in group size may not account for the non-normality of the whole data set. However, groups of 1 were also not normal! 
+
+
+
+###Some other explorations
+
+When did people observe?
+Did median stretch interval change throughout the day?
+Did group median size vary throughout the day?
+
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+unique(penguin_group$Time_of_day)
+Time_data <- penguin_group %>% filter(Time_of_day %in% c("Early morning", "Late morning" ,"Early afternoon", "Late afternoon" , "Night"  )) %>% group_by(Time_of_day) %>%
+      summarise(number_observations = n(), median_intervals = median(inter_stretch_intervals_s, na.rm=TRUE), median_groupsize = median(n_penguins, na.rm=TRUE))
+Time_data      
+```
+
+Plot of when people observed:
+```{r,echo=FALSE, message = FALSE, warning = FALSE}
+
+#plot of when people observed #if time figure out how to reorder dactor
+time_obs_plot <- Time_data  %>% 
+  mutate(name = fct_relevel(Time_of_day, "Early morning", "Late morning" ,"Early afternoon", "Late afternoon" , "Night")) %>%
+  ggplot(aes(x = Time_of_day, y = number_observations, fill = Time_of_day)) +
+  geom_bar (stat="identity") + 
+  xlab("Time of observations") +
+  ylab("# of observations")
+  time_obs_plot 
+```
+
+Plot of  group size by time of day
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+size_by_day_plot <- penguin_group %>% filter(Time_of_day %in% c("Early morning", "Late morning" ,"Early afternoon", "Late afternoon" , "Night"  ))  %>% 
+mutate(name = fct_relevel(Time_of_day, "Early morning", "Late morning" ,"Early afternoon", "Late afternoon" , "Night")) %>% 
+ggplot( aes(x = Time_of_day, y = n_penguins, fill = Time_of_day )) +
+  geom_boxplot() +
+  xlab("Time of observations") +
+  ylab("Group size") 
+#geom_point(data = Time_data, mapping=aes(x = Time_of_day, y = median_groupsize, color = Time_of_day), shape=17, size = 4) #parameters for the averages
+     
+size_by_day_plot
 
 
 ```
 
 
-```{r}
+
+```{r, eval = FALSE, echo=FALSE, echo = FALSE}
+### Random fake data from prompt:
 #generate random dataset
 #make histogram
 #now add an excess of low and high numbers 
@@ -36,9 +317,10 @@ interstretch_interval <- rnorm(x, mean = 50.0, sd = 15.0)
 interstretch_interval<-data.frame(interstretch_interval)
 #plot
 normalplot <- ggplot(interstretch_interval, aes(x=interstretch_interval)) + geom_histogram(binwidth=10, color = "black", fill = "white") + xlab("Interstretch interval (s)")
+normalplot
 #ggsave("normaldistribution.jpg", height = 2, width = 3)
 
-histogram with excess of low and high numbers
+#histogram with excess of low and high numbers
 interstretch_interval
 #make some low and high numbers
    p<-   c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,20,20,20,20,11,1,1,1,1,1,1,1,1,1,1,1,1,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5, 20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,100, 100, 110,115, 135,144, 122, 133 )
@@ -48,11 +330,11 @@ interstretch_interval_2<- data.frame(rbind(interstretch_interval, p))
 #plot
 non_normalplot <- ggplot(interstretch_interval_2, aes(x=interstretch_interval)) + geom_histogram(binwidth=10, color = "black", fill = "white") + xlab("Interstretch interval (s)")
 non_normalplot 
-ggsave("nonnormaldistribution.jpg", height = 2, width = 3)
+#ggsave("nonnormaldistribution.jpg", height = 2, width = 3)
 hist(interstretch_interval_2$interstretch_interval)
 ```
 
-```{r}
+```{r, eval = FALSE, echo=FALSE, message = FALSE, warning = FALSE}
  n = 30 #occurances
  r = 0.8 # correlation bt groups
  
@@ -64,17 +346,13 @@ hist(interstretch_interval_2$interstretch_interval)
 #plot with correlation 
 group_stretch_plot <- ggplot(group_stretch, aes(x= x1, y= y1)) +geom_point() + ylab("# stretches / individual") + xlab("# penguins in group")
  group_stretch_plot
- ggsave("group_stretch_plot.jpg",height = 2, width = 3)
+ #ggsave("group_stretch_plot.jpg",height = 2, width = 3)
  
  
  #plot without correlation
 group_stretch_plot_nocorrelation <- ggplot(group_stretch, aes(x= x1, y= x2)) +geom_point() + ylab("# stretches / individual") + xlab("# penguins in group")
 group_stretch_plot_nocorrelation
- ggsave("group_stretch_plot_nocorrelation.jpg",height = 2, width = 3)
+ #ggsave("group_stretch_plot_nocorrelation.jpg",height = 2, width = 3)
  
 ```
-```{r}
-
-```
-
 
