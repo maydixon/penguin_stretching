@@ -1,4 +1,4 @@
-"","n_penguins","stretch_mean","stretch_sd","stretch_median","n_obs","avg_interstretch_per_individual","med_interstretch_per_individual"
+"","n_penguins","stretch_mean","stretch_sd","stretch_median","n_obs","stretch_mean_penguin","stretch_med_penguin"
 "1",1,272.705,361.475727376559,162.000000000006,200,272.705,162.000000000006
 "2",2,198.548742138365,258.348478228805,108.000000000003,636,397.097484276729,216.000000000005
 "3",3,158.046653144016,226.857538995158,77.4999999999993,986,474.139959432049,232.499999999998
